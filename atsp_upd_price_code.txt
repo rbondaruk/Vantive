@@ -1,0 +1,61 @@
+For cross-referenced parts we should create another proc to call that will return the value we need.  call it atsp_crss_rf_pkg.atso_crss_rf
+
+the atsp_crss_rf_pkg.atso_crss_rf should do the following:
+
+parms for the proc are:
+pass in the ITEMID to the proc
+pass in the TYPE you want to look for (either 'Update' or 'New/Exchange' from below)
+pass in the ACTIVE you are looking for (either 1 or 0)
+
+select count(icr.switemmasterid)
+from sw_item_cross_ref icr
+where icr.switemmasterid = ITEMID
+and icr.swaliastype = TYPE
+and icr.swactive = ACTIVE
+
+return the count.
+end proc
+
+
+to get inventory count use the following;
+
+select sum(c.SWAVAILABLEQTY)
+FROM   SW_STOCK_COUNTS c, SW_STOCK_STATUS s
+WHERE  	s.swItemMasterId = itemid
+and	s.SWFAMILY	 = 'Good'
+and	c.swStockStatusid = s.SWSTOCKSTATUSID;
+
+
+Proc Pseudo-Code for update_price_code
+
+NOTE: In this proc you can call the proc ATSP_DRV_ECADATE_PKG.ATSP_DRV_ECADATE to get the ECA_DATE for any item master record.
+
+If ATSUPPORTSTRATEGY = 'Local Repair' then 
+	Price Code = L
+
+else if ATPARTSTATUS in ('Inactive','Obsolete') and there is an active cross reference with Type = Update then 
+	Price Code = 4, 
+
+else if ATPARTSTATUS in ('Inactive','Obsolete') and ECA Date => SYSDATE then 
+	Price Code = 1,
+
+else if ATPARTSTATUS in ('Inactive','Obsolete') and ECA Date < SYSDATE then 
+	Price Code = 7, 
+
+else if ATPARTSTATUS = 'Active' and ECA Date < today and inventory count > 0 then 
+	Price Code = J, 
+
+else if ATPARTSTATUS = 'Active' and (ATDCINVENTORYDISPOSITION = 'Use Till Gone' or ATFIELDINVENTORYDISPOSITION = 'Use Till Gone') and there is an non-active cross-reference with Type = Update then 
+	price code = X, 
+
+else if ATPARTSTATUS = 'Active' and ATSUPPORTSTRATEGY = 'Inter-Company' then 
+	Price Code = V, 
+
+else if ATPARTSTATUS = 'Active' and ATPARTTYPE in ('Expensed Kit', 'Virtual Kit', 'Build to Order', 'Build to Stock') then 
+	Price Code = B, 
+
+else if ATPARTSTATUS = 'Active' and ATLIFETIMEBUY = 1 then 
+	Price Code = 9, 
+
+else if ATPARTSTATUS = 'Active and Local Part Class = New and there is an active cross reference with a Type = 'New/Exchange' and it is cross referenced to another part with ATPARTSTATUS = 'Active' then 
+	Price Code = R.

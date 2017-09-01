@@ -1,0 +1,338 @@
+Option Explicit
+'*******************************************
+ Public Message          as Object
+ Public Codeset          as Object
+'********************************************
+
+Const BAD_VBA 	  as String = "7453"
+
+'Page Constants
+
+Const PAGE_MAT_LOG as String = "Material Log"
+
+'Codeset Constants
+
+Const MATERIAL_USAGE as String = "AT Material Usage"
+Const CS_CONSUMED    as String = "MU_CONSUMED"
+Const CS_NOT_USED    as String = "MU_NOT_USED"
+Const CS_INSTALLED   as String = "MU_INSTALLED"
+Const CS_DEINSTALLED as String = "MU_DE_INSTALLED"
+
+'Field Constants
+
+Const USAGEPATH               as String = "swUsage"
+Const ADDPRODEXCHANGEPATH     as String = "AddProdExchange"
+Const UPDATECONFPATH          as String = "swUpdateConf"				 				
+Const ADDPRODSERIALNUMBERPATH as String = "swAddInstProdId|SW_INST_PRODUCT.swSerialNumber"
+Const ADDNAMEPATH             as String = "swAddProdRelId|SW_PROD_RELEASE.swName"
+Const ADDQTYPATH              as String = "swAddQty"
+Const ADDITEMCODEPATH         as String = "ATADDPARTNUMBERID|SW_ITEM_MASTER.swItemCode"
+Const ADDPARTNUMSERIALPATH    as String = "ATADDPARTNUMSERIAL"
+Const DELSERIALNUMBERPATH     as String = "swDelInstProdId|SW_INST_PRODUCT.swSerialNumber"
+Const DELNAMEPATH             as String = "swDelProdRelId|SW_PROD_RELEASE.swName"
+Const DELQTYPATH              as String = "SWDELQTY"
+Const REASONREMOVEDPATH       as String = "ATREASONREMOVED"
+Const ADDVERSIONPATH          as String = "swAddProdRelId|SW_PROD_RELEASE.swVersion"
+Const ADDCUSTASSETTAGPATH     as String = "ATADDCUSTASSETTAG"
+Const DELITEMCODEPATH         as String = "ATDELPARTNUMBERID|SW_ITEM_MASTER.swItemCode"
+Const DELPARTNUMSERIALPATH    as String = "ATDELPARTNUMSERIAL"
+Const DELCUSTASSETTAGPATH     as String = "ATDELCUSTASSETTAG"
+Const DELVERSIONPATH          as String = "swDelProdRelId|SW_PROD_RELEASE.swVersion"
+Const ADDPRODTRACKINGPATH     as String = "AddProdTracking"
+Const ADDPARTTRACKINGPATH     as String = "AddPartTracking"
+Const DELSERIALIZEDPATH       as String = "DelTracking"
+
+Function atSetMatLogFieldAttributes ()
+'***********************************************************************************************
+'  Author                           : Robert Bondaruk, PeopleSoft Consulting
+'  Date Written                     : 7/27/2000
+'  Objects invoking this procedure  : SERVICE_ORDER
+'  Events Called from               : Field Changed
+'  Detailed Description             : 
+'     This function disables/enables and set default values of fields on the material log child
+'     detail form based on the 'Usage'(swUsage) selected.
+'  Modified By                      :
+'  Modified Date                    :
+'  Modified Desc.                   :
+'***********************************************************************************************
+On Error GoTo Errhndl
+atSetMatLogFieldAttributes  = 0 'By default, the function returns a success value.
+'Actual Code Begins Here ------------------
+
+Dim w                as Window
+Dim p                as Page
+Dim f                as Form
+Dim Usage            as Field
+Dim AddProdExchange  as Field
+Dim UpdateConf       as Field
+Dim AddProdSerialNum as Field
+Dim AddName          as Field
+Dim AddQty           as Field
+Dim AddItemCode      as Field
+Dim AddPartNumSerial as Field
+Dim DelSerialNum     as Field
+Dim DelName          as Field
+Dim DelQty           as Field
+Dim ReasonRemoved    as Field
+Dim AddVersion       as Field
+Dim AddCustAssetTag  as Field
+Dim DelItemCode      as Field
+Dim DelPartNumSerial as Field
+Dim DelCustAssetTag  as Field
+Dim DelVersion       as Field
+Dim AddProdTracking  as Field
+Dim AddPartTracking  as Field
+Dim DelSerialized    as Field
+Dim Consumed         as String
+Dim Not_Used         as String
+Dim Installed        as String
+Dim DeInstalled      as String
+
+Set w = Application.EventWindow 
+Set p = w.Page(PAGE_MAT_LOG)
+Set f = p.Form
+								
+Set Usage            = f.Field(USAGEPATH)								
+Set AddProdExchange  = f.Field(ADDPRODEXCHANGEPATH)
+Set UpdateConf       = f.Field(UPDATECONFPATH)
+Set AddProdSerialNum = f.Field(ADDPRODSERIALNUMBERPATH)
+Set AddName          = f.Field(ADDNAMEPATH)
+Set AddQty           = f.Field(ADDQTYPATH)
+Set AddItemCode      = f.Field(ADDITEMCODEPATH)
+Set AddPartNumSerial = f.Field(ADDPARTNUMSERIALPATH)
+Set DelSerialNum     = f.Field(DELSERIALNUMBERPATH)
+Set DelName          = f.Field(DELNAMEPATH)
+Set DelQty           = f.Field(DELQTYPATH)
+Set ReasonRemoved    = f.Field(REASONREMOVEDPATH)
+Set AddVersion       = f.Field(ADDVERSIONPATH)
+Set AddCustAssetTag  = f.Field(ADDCUSTASSETTAGPATH)
+Set DelItemCode      = f.Field(DELITEMCODEPATH)
+Set DelPartNumSerial = f.Field(DELPARTNUMSERIALPATH)
+Set DelCustAssetTag  = f.Field(DELCUSTASSETTAGPATH)
+Set DelVersion       = f.Field(DELVERSIONPATH)
+Set AddProdTracking  = f.Field(ADDPRODTRACKINGPATH)
+Set AddPartTracking  = f.Field(ADDPARTTRACKINGPATH)
+		   
+'Set Field Defaults
+
+UpdateConf.ReadOnly       = 0
+UpdateConf.Value          = 0
+AddProdSerialNum.ReadOnly = 0
+AddName.ReadOnly          = 0
+AddQty.ReadOnly           = 0
+AddItemCode.ReadOnly      = 0
+AddPartNumSerial.ReadOnly = 0
+DelSerialNum.ReadOnly     = 0
+DelName.ReadOnly          = 0
+DelQty.ReadOnly           = 0
+ReasonRemoved.ReadOnly    = 0
+AddVersion.ReadOnly       = 0
+AddCustAssetTag.ReadOnly  = 0   
+DelItemCode.ReadOnly      = 0
+DelPartNumSerial.ReadOnly = 0 
+DelCustAssetTag.ReadOnly  = 0   
+DelVersion.ReadOnly       = 0
+
+CodeSet.GetLiteral Application.Locale(), MATERIAL_USAGE, CS_CONSUMED, Consumed
+CodeSet.GetLiteral Application.Locale(), MATERIAL_USAGE, CS_NOT_USED, Not_Used
+CodeSet.GetLiteral Application.Locale(), MATERIAL_USAGE, CS_INSTALLED, Installed
+CodeSet.GetLiteral Application.Locale(), MATERIAL_USAGE, CS_DEINSTALLED, DeInstalled
+
+
+Select Case	Usage.Value
+
+Case Consumed
+
+If AddProdExchange.Value = "" Then  'Product is not a Product Exchange'
+   'New Part Info Section
+
+   UpdateConf.Value          = 0
+   UpdateConf.ReadOnly       = 1
+   AddProdSerialNum.Value    = ""
+   AddProdSerialNum.ReadOnly = 1
+   AddName.Required          = 1
+   AddVersion.Value          = ""
+   AddVersion.ReadOnly       = 1
+   AddCustAssetTag.Value     = ""
+   AddCustAssetTag.ReadOnly  = 1
+   AddQty.Required           = 1
+   AddItemCode.Required      = 1
+
+   If AddPartTracking.Value = "1" Then
+
+      AddPartNumSerial.Required = 1
+
+   End If
+
+'   'Original Part Info	Section
+
+   DelSerialNum.Value        = ""
+   DelSerialNum.ReadOnly     = 1
+   DelName.Value             = ""
+   DelName.ReadOnly          = 1
+   DelVersion.Value          = ""
+   DelVersion.ReadOnly       = 1
+   DelCustAssetTag.Value     = ""
+   DelCustAssetTag.ReadOnly  = 1
+   DelQty.Value              = ""
+   DelQty.ReadOnly           = 1
+   DelItemCode.Value         = ""
+   DelItemCode.ReadOnly      = 1
+   DelPartNumSerial.Value    = ""
+   DelPartNumSerial.ReadOnly = 1
+   ReasonRemoved.Value       = ""
+   ReasonRemoved.Required    = 1   
+
+Else					                   'Product is a Product Exchange
+   'New Part Info Section
+
+   UpdateConf.Value       = 1
+   AddName.Required       = 1
+   AddQty.Value           = 1
+   AddQty.ReadOnly        = 1
+   AddItemCode.Required   = 1
+
+   If AddProdTracking.Value = "Serialized" Then
+
+      AddProdSerialNum.Required = 1
+
+   End If
+
+   If AddPartTracking.Value = "1" Then
+
+      AddPartNumSerial.Required = 1
+
+   End If
+
+   'Original Part Info Section
+
+   DelSerialNum.Required     = 1
+   DelName.Required          = 1
+   DelQty.Value              = 1
+   DelQty.ReadOnly           = 1
+   ReasonRemoved.Required    = 1   
+
+End If
+
+Case Installed
+   'New Part Info Section
+
+   UpdateConf.Value          = 1
+   AddName.Required          = 1
+   AddQty.Value              = 1
+   AddQty.ReadOnly           = 1
+
+   If AddProdTracking.Value = "1" Then
+
+      AddProdSerialNum.Required = 1
+
+   End If
+
+   If AddPartTracking.Value = "1" Then
+
+      AddPartNumSerial.Required = 1
+
+   End If
+
+'   'Original Part Info Section
+
+   DelSerialNum.Value        = ""
+   DelSerialNum.ReadOnly     = 1
+   DelName.Value             = ""
+   DelName.ReadOnly          = 1
+   DelVersion.Value          = ""
+   DelVersion.ReadOnly       = 1
+   DelCustAssetTag.Value     = ""
+   DelCustAssetTag.ReadOnly  = 1
+   DelQty.Value              = ""
+   DelQty.ReadOnly           = 1
+   DelItemCode.Value         = ""
+   DelItemCode.ReadOnly      = 1
+   DelPartNumSerial.Value    = ""
+   DelPartNumSerial.ReadOnly = 1
+   ReasonRemoved.Value       = ""
+   ReasonRemoved.ReadOnly    = 1   
+
+Case DeInstalled
+   'New Part Info Section
+
+   UpdateConf.Value          = 0
+   UpdateConf.ReadOnly       = 1
+   AddProdSerialNum.Value    = ""
+   AddProdSerialNum.ReadOnly = 1
+   AddName.Value             = ""
+   AddName.ReadOnly          = 1
+   AddVersion.Value          = ""
+   AddVersion.ReadOnly       = 1
+   AddCustAssetTag.Value     = ""
+   AddCustAssetTag.ReadOnly  = 1
+   AddQty.Value              = ""
+   AddQty.ReadOnly           = 1
+   AddItemCode.Value         = ""
+   AddItemCode.ReadOnly      = 1
+   AddPartNumSerial.Value    = ""
+   AddPartNumSerial.ReadOnly = 1
+
+   'Original Part Info Section
+
+   DelSerialNum.Required     = 1
+   DelName.Required          = 1
+   DelQty.Value              = 1
+   DelQty.ReadOnly           = 1
+   DelItemCode.ReadOnly      = 1
+   DelPartNumSerial.ReadOnly = 1
+   ReasonRemoved.Required    = 1   
+
+Case Not_Used
+   'New Part Info Section
+
+   UpdateConf.Value          = 0
+   UpdateConf.ReadOnly       = 1
+   AddVersion.Value          = ""
+   AddVersion.ReadOnly       = 1
+   AddCustAssetTag.Value     = ""
+   AddCustAssetTag.ReadOnly  = 1
+   AddQty.Required           = 1
+   AddItemCode.Required      = 1
+   AddPartNumSerial.Required = 1
+
+   If AddPartTracking.Value = "1" Then
+
+      AddPartNumSerial.Required = 1
+
+   End If
+
+   'Original Part Info Section
+
+   DelSerialNum.Value        = ""
+   DelSerialNum.ReadOnly     = 1
+   DelName.Value             = ""
+   DelName.ReadOnly          = 1
+   DelVersion.Value          = ""
+   DelVersion.ReadOnly       = 1
+   DelCustAssetTag.Value     = ""
+   DelCustAssetTag.ReadOnly  = 1
+   DelQty.Value              = ""
+   DelQty.ReadOnly           = 1
+   DelItemCode.Value         = ""
+   DelItemCode.ReadOnly      = 1
+   DelPartNumSerial.Value    = ""
+   DelPartNumSerial.ReadOnly = 1
+   ReasonRemoved.Value       = ""   
+   ReasonRemoved.Required    = 1   
+
+End Select
+
+  'Actual Code Ends Here ------------------
+Exit Function 'The function should not fall through to the error handler.
+
+Errhndl:
+   Dim ErrMsg1 as string
+   Dim ErrMsg2 as string
+   Dim ErrMsg3 as string
+   ErrMsg1 = Err
+   ErrMsg2 = Error$
+   ErrMsg3 = Erl
+   Message.DisplayErrorMessage Application.Locale(), BAD_VBA, "atSetMatLogFieldAttributes", ErrMsg1, ErrMsg2, ErrMsg3
+   atSetMatLogFieldAttributes = -1
+End Function

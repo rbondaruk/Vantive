@@ -1,0 +1,506 @@
+Option Explicit
+
+'*******************************************************************************************
+Public Message as Object
+Const BAD_VBA as string = "7453"
+'******************************************************************************************
+
+'Constants Declaration for the fields 
+Const  DOC_NUMBER as STRING  = "SWSERVICEORDERID|SW_PO_HEADER_VW.swDocumentNumber"
+Const  REQ_DTE AS STRING = "SWREQUIREDATE"
+Const  PRMSE_DTE AS STRING = "SWPROMISEDATE"
+Const  UNT_PRCE AS STRING = "SWUNITPRICE"
+Const  ORG_QTY AS STRING = "SWORIGQUANTITY"
+Const  DRP_SHP AS STRING = "ATDROPSHIP"
+Const  ASS_SO AS STRING = "ATASSOCSERVICEORDER"
+Const  PRTY AS STRING = "ATPRIORITY"
+ConsT  AT_GVRMNT AS STRING = "ATGOVERNMENT"
+Const  AT_MAXORD AS STRING = ":MaxOrder"
+ConsT  AT_MINORD AS STRING = ":MinOrder"
+ConsT  AT_MULTIORD AS STRING = ":MultiOrder"
+Const  SRVC_ORDER AS STRING = "swServiceOrderId|SW_PO_HEADER_VW.swServiceOrderId"
+Const  PRT_NMBR AS STRING = ":PARTNUMBER"
+
+
+'Constant Declarations for Page Decalrations
+Const PGE_GENERAL AS STRING = "General"
+
+'Constant Declaration for Error Messages
+Const ERROR_POLINE_QUANTITY as String = "50056"
+Const ERROR_POLINE_QUANTITY2 as String = "50057"
+Const ERROR_POLINE_QUANTITY3 as String = "50058"
+Const ERROR_POLINE_QUANTITY4 as String = "8303"
+Const ERROR_POLINE_RECEPIENTS as String = "50059"
+
+Declare Function VAPPToDatabaseNumFormat( NumStrtoConv as String) as String
+
+Function ATSetPOLReadOnly ()
+
+'***************************************************************************************
+'Author                           : Ramana Chakka
+'Date Written                     : 05/15/00
+'Objects invoking this procedure  :
+'Events Called from               : On the New and Open Record Event on the Purchase Order Line Screen
+'Detailed Description             : The Function is written to change the Status of some fields on the Purchase
+'                                   Order Line Screen depending on the status Of the Purchase Order
+'Modified By                      : 
+'Modified Date                    : 
+'*****************************************************************************************
+
+On Error Goto ErrHndl
+	 		
+Dim Win as Window 				'Window Handler
+Dim Pge as Page					'Page Handler
+Dim FldPONum as Field		    'Field Handler for Linked Field PO Number
+Dim PONum as String				'String Variable to hold The value of PONumber
+dim FldReqDte as Field			'Field Handler for Date Required field
+Dim FldDteAck as Field			'Field Handler of Date Acknowledged
+Dim FldUPrce as Field			'Field Handler of UnitPrice
+Dim FldQty as Field				'Field Handler of Quantity
+Dim Sql as String				'String to hold the SQL String to be passed into the Application.sql
+Dim SQLRows() as String			'Array to hold the result set from the Stored Procedure
+Dim Sts as String				'Sting Variable to hold output from the Stored Procedure
+Dim rc as integer				'Integer that shows the no of rows returned from the stored Procedure
+
+
+	set Win		 	= Application.EventWindow
+	set Pge 		= Win.FocusPage
+	set FldPONum 	= Pge.Field(DOC_NUMBER)
+	set FldReqDte 	= Pge.Field(REQ_DTE)
+	set FldDteAck 	= Pge.Field(PRMSE_DTE)
+	set FldUPrce 	= Pge.Field(UNT_PRCE)
+	set FldQty  	= Pge.Field(ORG_QTY)
+
+
+	PONum = FldPONum.value
+	PONum =  VAPPToDatabaseNumFormat(PONum)
+
+	sql = "begin atsp_pol_readonly1_pkg.atsp_pol_readonly1 (" & CStr(Application.Locale()) & "," & "'" & PONum & "'" & ", :a0, :b, :r, :s ); end;"
+	rc = Application.sql(sql,SQLRows)
+
+	Sts = SQLRows(0,0)
+	If Sts = "Closed" or Sts = "Cancelled" Then
+  		 FldReqDte.ReadOnly = 1
+	     FldDteAck.ReadOnly = 1
+    	 FldUPrce.ReadOnly = 1
+	     FldQty.ReadOnly =  1
+	 Else
+  	 	 FldReqDte.ReadOnly = 0
+	     FldDteAck.ReadOnly = 0
+    	 FldUPrce.ReadOnly = 0
+	     FldQty.ReadOnly =  0
+	End if
+
+Exit Function
+ErrHndl:
+    Dim ErrMsg1 as String
+    Dim ErrMsg2 as String
+    Dim ErrMsg3 as String
+    ErrMsg1 = Err
+    ErrMsg2 = Error$
+    ErrMsg3 = Erl
+    Message.DisplayErrorMessage Application.Locale(),BAD_VBA,"ATSetPOLReadOnly",ErrMsg1,ErrMsg2,ErrMsg3
+    ATSetPOLReadOnly = -1
+
+End function
+
+
+Function AtAssoSOReq ()
+   '***************************************************************************************
+   'Author      					 : Ramana Chakka
+   'Date Written 					 : 05/15/00
+   'Objects invoking this procedure  :
+   'Events Called from 				 : 	"Exit With Changes event of Drop Ship Check box
+   'Detailed Description 			 :  This function changes the property of the Assosiated Service Order # Field 
+   '									from Required to not Required depending on the value of the DropShip field 										
+   'Modified By                      : 
+   'Modified Date                    : 
+   '*****************************************************************************************
+
+Dim Win as window	  				  'Window Handler	
+Dim Pge as Page						  'Page Handler
+Dim FldDrpShp as Field				  'Field Handler of DropShip	
+Dim FldAssSO as Field				  'Field Handler of Assosiated Service ORde
+
+  	On Error GoTo ErrHndl
+	set Win 	   	= Application.EventWindow
+	set Pge 		= Win.Page(PGE_GENERAL)
+	set FldDrpShp 	= Pge.Field(DRP_SHP)
+	set FldAssSO  	= Pge.Field(ASS_SO)
+
+	If FldDrpShp.value = 1 then
+	   FldAssSO.Required = 1
+	Else
+	   FldAssSO.Required = 0
+	End If
+
+Exit Function
+
+ErrHndl:
+    Dim ErrMsg1 as String
+    Dim ErrMsg2 as String
+    Dim ErrMsg3 as String
+    ErrMsg1 = Err
+    ErrMsg2 = Error$
+    ErrMsg3 = Erl
+    Message.DisplayErrorMessage Application.Locale(),BAD_VBA,"AtAssoSOReq",ErrMsg1,ErrMsg2,ErrMsg3
+	AtAssoSOReq = -1
+End Function
+
+
+Function AtPriority()
+
+   '***************************************************************************************
+   'Author      					 : Ramana Chakka
+   'Date Written 					 : 05/15/00
+   'Objects invoking this procedure  :
+   'Events Called from 				 : 	"Exit With Changes event of Drop Ship Check box
+   'Detailed Description 			 :  This function changes the property of the Government # Field 
+   '									from Required to not Required depending on the value of the Priority Drop down field 										
+   'Modified By                      : 
+   'Modified Date                    : 
+   '*****************************************************************************************
+
+
+
+Dim Win as Window					'Window Handler	
+Dim Pge as Page						'Page Handler
+Dim FldPrty as Field				'Field Handler of Priority
+Dim FldGvt as Field					'Field Handler of Government
+
+	On Error GoTo ErrHndl
+	Set Win 	= Application.EventWindow
+	Set Pge 	= Win.Page(PGE_GENERAL)
+	set FldPrty = pge.Field(PRTY)
+	set FldGvt 	= Pge.Field(AT_GVRMNT)
+
+	If FldPrty.Value = "A" Then
+		FldGvt.Required = 1
+	Else
+		FldGvt.Required = 0
+	End If
+
+Exit function
+ErrHndl:
+    Dim ErrMsg1 as String
+    Dim ErrMsg2 as String
+    Dim ErrMsg3 as String
+    ErrMsg1 = Err
+    ErrMsg2 = Error$
+    ErrMsg3 = Erl
+    Message.DisplayErrorMessage Application.Locale(),BAD_VBA,"AtPriority",ErrMsg1,ErrMsg2,ErrMsg3
+	AtPriority = -1
+End Function
+
+
+Function AtCheckCtlgQty ()
+   '***************************************************************************************
+   'Author      					 : Ramana Chakka
+   'Date Written 					 : 05/16/00
+   'Objects invoking this procedure  :
+   'Events Called from 				 : 	"Exit With Changes" event of Quantity Field
+   'Detailed Description 			 :  This Function is created to validate the value of the 
+   '									Quantity whether it satisfies the requirement of maxorder,minorder and multiorder
+   'Modified By                      : Alok Sharma
+   'Modified Date                    : 6/30/00
+   'Modified For                     : Scripte was nit calculating the correct amount of quantity on the basis of
+   '                                   Max, Min and Multiple information.
+   'Modified By                      : Alok Sharma, Bimal
+   'Modified Date                    : 7/6/00
+   'Modified For                     : Part number blank check
+
+   'Modified By                      : Robert Bondaruk, Peoplesoft Consulting
+   'Modified Date                    : 8/11/00
+   'Modified For                     : Added error message ERROR_POLINE_QUANTITY4 and code to call it.
+   '*****************************************************************************************
+
+Dim Win as Window					'Window Handler
+Dim Pge as Page						'Page Handler
+Dim FldQty as Field					'Field Handler of Quantity
+Dim FldMaxord as Field				'Field Handler of Max Order
+Dim FldMinOrd as Field				'Field Handler of Min Order
+Dim FldMultiQty as Field			'Field Handler of Multi Quantity
+Dim FldPrtNmbr as Field				'Field Handler of Part Number
+Dim QtyMulti as Integer				'Integer Variable to handle Multi Quantity
+
+Dim dFldQty as Double				'Double Value of Quantity
+Dim dFldMaxord as Double			'Double Value of Max Order
+Dim dFldMinOrd as Double			'Double Value of Min Order
+Dim dFldMultiQty as Double			'Double Value of Multi Quantity
+
+
+'Error Handler Declarations
+    Dim ErrMsg1 as String
+    Dim ErrMsg2 as String
+    Dim ErrMsg3 as String
+
+	on Error GOTo ErrHndl
+	set Win		 	= Application.EventWindow
+	set Pge 		= Win.Page(PGE_GENERAL)
+	set FldQty 		= Pge.Field(ORG_QTY)
+	set FldMaxOrd 	= Pge.Field(AT_MAXORD)
+	set FldMinOrd 	= Pge.Field(AT_MINORD)
+	set FldMultiQty = Pge.Field(AT_MULTIORD)
+    set FldPrtNmbr 	= Pge.Field(PRT_NMBR)
+
+  'Changed to Double by Alok Sharma on 6/30/00
+    If FldPrtNmbr.value = "" then
+	     FldQty.Value = "" 
+     	 Message.DisplayErrorMessage Application.Locale(),ERROR_POLINE_QUANTITY,"AtCheckCtlgQty"
+         AtCheckCtlgQty = -1
+         Exit Function
+    End if
+
+
+    dFldQty = Cdbl(FldQty.value)
+    dFldMaxOrd = Cdbl(FldMaxOrd.value)
+    dFldMinOrd = Cdbl(FldMinOrd.value)
+    dFldMultiQty = Cdbl(FldMultiQty.value)
+
+	If dFldMaxOrd = 0   or dFldMinOrd = 0 then 
+           Message.DisplayErrorMessage Application.Locale(),ERROR_POLINE_QUANTITY3
+		   FldQty.value = 0	
+	  	   Exit Function
+    End If
+	If 	dFldQty < dFldMinOrd  Then
+		   FldQty.Value = "" 
+     	   Message.DisplayErrorMessage Application.Locale(),ERROR_POLINE_QUANTITY2
+           AtCheckCtlgQty = -1
+           Exit Function  
+	End If
+    If dFldQty > dFldMaxOrd Then
+		   FldQty.Value = "" 
+     	   Message.DisplayErrorMessage Application.Locale(),ERROR_POLINE_QUANTITY2
+           AtCheckCtlgQty = -1
+           Exit Function    
+    End If
+
+    if dFldMultiQty > 0 Then
+         If (dFldQty mod dFldMultiQty) <> 0 Then
+		    FldQty.Value = "" 
+     	    Message.DisplayErrorMessage Application.Locale(),ERROR_POLINE_QUANTITY2
+            AtCheckCtlgQty = -1
+            Exit Function
+	     Else 
+	        QtyMulti = dFldQty mod dFldMultiQty
+	     End if
+    Else
+     	 Message.DisplayErrorMessage Application.Locale(),ERROR_POLINE_QUANTITY4
+         FldQty.Value = ""
+	     AtCheckCtlgQty  = -1
+         QtyMulti = 0
+         Exit Function   
+    End if
+
+Exit Function
+ErrHndl:
+    ErrMsg1 = Err
+    ErrMsg2 = Error$
+    ErrMsg3 = Erl
+    Message.DisplayErrorMessage Application.Locale(),BAD_VBA,"AtCheckCtlgQty",ErrMsg1,ErrMsg2,ErrMsg3
+	AtCheckCtlgQty = -1
+End Function
+
+
+Function AtCheckQtyUnit ()
+
+   '***************************************************************************************
+   'Author      					 : Ramana Chakka
+   'Date Written 					 : 05/16/00
+   'Objects invoking this procedure  :
+   'Events Called From 				 : New and Open Record event of the Purchase order line
+   'Detailed Description			 : This Function is created to check whether the Any receipts are made
+   '								   against the PO.If so the Quantity and UnitPrice Fields are made Readonly
+   'Modified By                      : 
+   'Modified Date                    : 
+   '*****************************************************************************************
+
+Dim Win as Window					'Window Handler
+Dim Pge as Page						'Page Handler
+Dim FldQty as Field					'Field Handler of Quantity
+Dim FldUnitPrce as Field			'Field Handler of Unit Price
+Dim FldSOID as Field				'Field Handler of Service Order Id
+Dim serviceorder as String			'String Variable to handle the SO Id
+Dim sql as String					'String Variable to handle the SQL String
+Dim rc as Integer					'Integer Variable to handle the No Of rows Returned from the Stored Procedure
+Dim SqlString() as String			'String array to hold the output values of Stored Procedure
+Dim Rcpt as String					'Stirng Variable 
+
+
+'Error Handler Declarations
+    Dim ErrMsg1 as String
+    Dim ErrMsg2 as String
+    Dim ErrMsg3 as String
+
+	On Error GOTO ErrHndl
+	Set Win		 	= Application.EventWindow
+	set Pge 		= Win.Page(PGE_GENERAL)
+	set FldQty 		= Pge.Field(ORG_QTY)
+	set FldUnitPrce =Pge.Field(UNT_PRCE)
+	set FldSOID 	= Pge.Field(SRVC_ORDER)
+
+	serviceorder = FldSOID.value
+	sql = "begin at_check_receipt_poline_pkg.at_check_receipt_poline(" & Cstr(serviceorder) & ", :a0 , :b , :r , :s ); end;"
+	rc = Application.sql(sql,sqlstring)
+
+	Rcpt = sqlstring(0,0)
+	If Rcpt ="CANNOT CANCEL" THEN
+		 FldQty.Required = 0
+		 FldQty.Readonly = 1
+		 FldUnitPrce.Readonly = 1
+       	 Message.DisplayErrorMessage Application.Locale(),ERROR_POLINE_RECEPIENTS,"AtCheckQtyUnit"
+
+	Else
+		 FldQty.Required = 1 
+		 FldQty.Readonly = 0
+		 FldUnitPrce.readonly = 0
+	End if
+
+Exit Function
+ErrHndl:
+    ErrMsg1 = Err
+    ErrMsg2 = Error$
+    ErrMsg3 = Erl
+    Message.DisplayErrorMessage Application.Locale(),BAD_VBA,"AtCheckQtyUnit",ErrMsg1,ErrMsg2,ErrMsg3
+	AtCheckQtyUnit = -1
+   
+End Function
+
+
+Function AtPOLDisablePage ()
+
+   '***************************************************************************************
+   'Author      					 : Ramana Chakka
+   'Date Written 					 : 05/16/00
+   'Objects invoking this procedure  :
+   'Events Called from 				 : 	New and Open Record event of Purchase Order Line
+   'Detailed Description 			 :  This Function is created to make the fields readonly
+   '									based on the Status of the Assosiated PO  
+   'Modified By                      : 
+   'Modified Date                    : 
+   '*****************************************************************************************
+Dim Win as Window					'Window Handler
+Dim Frm as Form						'Form Handler
+Dim f as Field						'Field handler
+Dim num as integer					'Integer variable to hold the no of fields on the form
+Dim index as integer				'Integer variable used in the ForLoop
+Dim FldPONum as Field				'Field Handler of PONUM
+Dim PONum as String					'String Variable to hold the value of PONUM Field
+Dim Sql as String					'String Variable to hold the SQL Statement 
+Dim SqlString() as String			'String Array which holds the output of the Application.Sql
+Dim rc as Integer					'Integer that returns the no of rows from the Stored Procedure
+Dim Sts as String
+
+
+	On Error GoTo ErrHndl
+	set Win 		= Application.FocusWindow
+	set Frm 		= win.FocusPage.Form
+	set FldPONum 	= Frm.Field(DOC_NUMBER)
+
+	PONum = FldPONum.value
+	sql = "begin atsp_pol_readonly1_pkg.atsp_pol_readonly1 (" & CStr(Application.Locale()) & "," & "'" & PONum & "'" & ", :a0, :b, :r, :s ); end;"
+	rc = Application.sql(Sql,SqlString)
+
+	Sts = SqlString(0,0)
+
+	If Sts = "Placed" or Sts = "Cancelled" or Sts = "Short Closed" Then
+			num = frm.NumFields
+			for index = 1 to num
+				set f = frm.Field(index)
+	  			f.ReadOnly = 1
+			next index
+	Else
+		  Exit Function
+	End if
+
+Exit Function
+ErrHndl:
+    Dim ErrMsg1 as String
+    Dim ErrMsg2 as String
+    Dim ErrMsg3 as String
+    ErrMsg1 = Err
+    ErrMsg2 = Error$
+    ErrMsg3 = Erl
+    Message.DisplayErrorMessage Application.Locale(),BAD_VBA,"AtPOLDisablePage",ErrMsg1,ErrMsg2,ErrMsg3
+	AtPOLDisablePage = -1
+End Function
+
+
+Function ATMFRDlg()
+
+   '***************************************************************************************
+   'Author      					 : Ramana Chakka
+   'Date Written 					 : 05/17/00
+   'Objects invoking this procedure  :
+   'Events Called From 				 : Field Changed Event of the "MFR" Push button
+   'Detailed Description			 : This function is writted to populate a Dialog Box when the user hits the MFR Push button		
+   'Modified By                      : 
+   'Modified Date                    : 
+   '*****************************************************************************************
+
+Dim Retval as Integer
+Dim ReasonForReturn(4) As String		'Array String to hold the values to be displayed in the drop down field displayed in the Dialog box
+
+On Error GotO ErrHndl
+
+Begin Dialog MFRDialog ,,300,270,"MFR Dialog Box"
+	Text 10,12,40,13,"Qty Return",.Text1
+	TextBox 45,10,75,13,.TextBox1
+	Text 140,12,48,13,"Supplier RMA#",.Text2
+	TextBox 190,10,75,13,.TextBox2
+	Text 24,32,20,13,"Carrier",.Text3
+	TextBox 45,30,75,13,.TextBox3
+	Text 125,32,70,13,"Reason For Return",.Text4
+	DropListBox 190,30,100,58,ReasonForReturn,.DropListBox1
+	Text 16,52,26,13,"Address",.Text5
+	TextBox 45,50,150,13,.TextBox4
+	Text 12,72,30,13,"Address2",.Text6
+	TextBox 45,70,150,13,.TextBox5
+	Text 12,92,30,13,"Address3",.Text7
+	TextBox 45,90,150,13,.TextBox6
+	Text 12,112,30,13,"Address4",.Text8
+	TextBox 45,110,150,13,.TextBox7
+	Text 12,132,30,13,"Address5",.Text9
+	TextBox 45,130,150,13,.TextBox8
+	Text 32,152,12,13,"City",.Text10
+	TextBox 45,150,60,13,.TextBox9
+	Text 108,152,36,13,"State/Prov",.Text11
+	TextBox 145,150,40,13,.TextBox10
+	Text 195,152,60,13,"Zip/Postal Code",.Text12
+	TextBox 250,150,40,13,.TextBox11
+	Text 12,172,32,13,"Mail Stop",.Text13
+	TextBox 45,170,60,13,.TextBox12
+	Text 120,172,40,13,"Country",.Text14
+	TextBox 145,170,40,13,.TextBox13
+	Text 25,192,25,13,"Attn :",.Text15
+	TextBox 45,190,150,13,.TextBox14
+	Text 0,210,45,20,"Miscellaneous Charge",.Text16
+	TextBox 44,210,60,13,.TextBox15
+	Text 112,212,30,13,"Comment",.Text17
+	TextBox 145,210,100,13,.TextBox16
+	OKButton 50,240,40,20,.OKLab
+	CancelButton 150,240,40,20,.CancelLab
+End Dialog
+
+
+	ReasonForReturn(0) = "Non-Usable Goods"
+	ReasonForReturn(1) = "Supplier Initiated Return"
+	ReasonForReturn(2) = "Supplier MisShipment"
+	ReasonForReturn(3) = "Sellback To Supplier"
+	ReasonForReturn(4) = "Others"
+
+	
+	'Actually call dialog function
+ Dim GDialog as MFRDialog
+	  retval = Dialog(GDialog)
+	 Exit Function
+ErrHndl:
+    Dim ErrMsg1 as String
+    Dim ErrMsg2 as String
+    Dim ErrMsg3 as String
+    ErrMsg1 = Err
+    ErrMsg2 = Error$
+    ErrMsg3 = Erl
+    Message.DisplayErrorMessage Application.Locale(),BAD_VBA,"ATMFRDlg",ErrMsg1,ErrMsg2,ErrMsg3
+	ATMFRDlg = -1
+End Function

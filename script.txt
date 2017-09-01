@@ -1,0 +1,30 @@
+Capture which value has been selected on the Usage Dropdown.  A part is determined to be an exchange type by looking at the Item Master record for field atPartType of exchange.
+
+1. If Usage = ‘Consumed’ and Part Type is ‘Exchange’ then set fields in the 
+New Part Info(formerly Installation/Consumption Info)  First Check the flag Update Config 1.  Serial Number.required = 1 if Serialized part.(This S/N should be derived from the Shipment Info related to this Part Number.) 2.  Product Name.Required = 1 3.  Quantity =1 and readonly.  4.  PartNumber.required = 1. 5.  Part Serial Number.Required = 1 if Serialized part(This S/N should be derived from the Shipment Info related to this Part Number.)
+Original Part Info, 1. SerialNumber.Required = 1(From SO Product SN)  2.  ProductName.Required = 1(From SO Product)  3.  Quantity.Value = 1 and ReadOnly, 4.  ReturnType.Required = 1   
+
+2. If Usage = ‘Consumed’ and Part Type <> ‘Exchanged’ then set fields in the
+New Part Info(formerly Installation/Consumption Info) First ensure that the Update Config checkbox is unchecked and disable it.  1. SerialNumber.Visible = 0, 2.  ProductName.required = 1 3.  Revision.Visble = 0, 4. CustomerAssetTag.visible = 0, 5. Quantity.Required = 1 6.  PartNumber.Required=1, 7. PartSerialNumber.Required=1 if serialized part.
+Original Part Info, all fields hidden except ReturnType.Required = 1.
+
+3. If Usage = ‘Installed’
+New Part Info(formerly Installation/Consumption Info)  First, Check Update Config. Checkbox.  1.SerialNumber.required = 1 if serialized part(This S/N should be derived from the Shipment Info related to this Part Number.)  2. ProductName.Required = 1  3.  Quantity =1 and disabled.  4.  PartNumber is editable  5.  PartSerialNumber.Required =1 if serialized part.
+Original Part Info, All fields hidden
+Continued on next page.
+
+4. If usage = ‘De-Installed’
+Disable Update Config checkbox and Uncheck.
+New Part Info(formerly Installation/Consumption Info) All fields hidden.
+Original Part Info, 1.  SerialNumber.Required = 1  2.  ProductName.required = 1  3.  Quantity.Value = 1 and disabled.  4.  PartNumber = hidden  5.  PartSerialNumber.Required = 1 if P/N tracked by SN derived from Item Master.  6. ReturnType.Required = 1
+
+5. If usage = ‘Not used’
+Uncheck Update Config is unchecked and disabled.
+New Part Info(formerly Installation/Consumption Info) 1. SerialNumber.Required = 1  2.  Product Name.Required  3.  Revision.Visible = 0.  4. CustomerAssetTag.Visible = 0.  5.  Quantity.Required = 1  6.  PartNumber.Required = 1  7.  PartSerialNumber.Required = 1 if serialized part.
+Original Part Info,  All fields hidden, except Return Type.Required = 1. 
+Also, the dropdown parms for this Not Used Usage type will be limited to ‘Verified part’ and ‘Non Verified part’
+
+There is an out of the box process to update installed record base based on the  material log.  We should be levering this process by this gap of requiring certain fields.
+
+
+
